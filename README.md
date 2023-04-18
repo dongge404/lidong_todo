@@ -17,7 +17,6 @@
 
 下面创建了一个store.js的文件：
 
-![03](assert/03.png)
 
 创建好了store.js模块之后，在入口文件引入并挂载。
 
@@ -99,7 +98,8 @@ context是上下文对象。value则是传递过来的数据对象。
 
 ```js
 removeTodo(id) {
-if (confirm('确定删除吗?')) 			          		 this.$store.commit('todoActions/REMOVETODO', id)   
+if (confirm('确定删除吗?')) 			          		
+this.$store.commit('todoActions/REMOVETODO', id)   
 }
 ```
 
