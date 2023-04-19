@@ -115,5 +115,215 @@ REMOVETODO(state, id) {
 
 只要过滤出不是当前id的其他元素，然后重新复赋值即可。
 
+### 点击编辑
+
+在页面中添加一个编辑按钮，当点击编辑时，右侧展示一个文本框，并让当前的值作为文本框的默认值。
+
+```html
+<span v-show="!todo.isEdit">{{ todo.title }}</span>
+<input
+	type="text"
+	class="input-edit"
+	ref="todoTitle"
+	v-show="todo.isEdit"
+	:value="todo.title"
+	@blur="handleBlur(todo)"
+>
+
+<button
+        class="btn btn-edit"
+        v-show="!todo.isEdit"
+        @click="todoEdit(todo)"
+>编辑</button>
+```
+
+标题和文本框以编辑根据todo对象上的isEdit属性来动态展示。
+
+下面是点击编辑按钮的回调：
+
+```js
+todoEdit(todo) {
+      // 先判断todo对象上是否存在isEdit属性
+      if (todo.hasOwnProperty('isEdit')) {
+        // 如果存在，则把值改为true
+        todo.isEdit = true
+      } else {
+        // 如果不存在，则通过$set方法进行绑定
+        this.$set(todo, 'isEdit', true)
+      }
+      //$nextTick代当DOM中的数据发生变化 就立刻执行回调
+      this.$nextTick(function () {
+        // 点击编辑立刻聚焦到文本框
+        this.$refs.todoTitle.focus()
+      })
+    }
+```
+
+> $set()方法可以为对象添加一个响应式的数据，只有响应式的数据，Vue才能监测得到。
+
+下面是失去焦点时的回调：
+
+```js
+handleBlur(todo) {
+    todo.isEdit = false
+    // 把编辑的数据发送到仓库进行修改
+    const newValue = {
+        id: todo.id,
+        value: this.$refs.todoTitle.value
+    }
+    // 直接将对象传递到mutations中，并执行EDITTODO回调
+    this.$store.commit('todoActions/EDITTODO', newValue)
+}
+```
+
+mutations中的回调：
+
+```js
+ EDITTODO(state, newValue) {
+      // 把的todo中的title改为修改之后的最新值
+      state.todoList.some(todo => {
+        if (todo.id === newValue.id) {
+          todo.title = newValue.value
+          return true
+        }
+      })
+    }
+```
+
+### 全选/取消全选
+
+点击Footer组件中的全选，可以选择所有的任务，再次点击，就会取消
+
+组件中的回调：
+
+```js
+checkAll(e) {
+    // 把当前复选框的最先状态值发送到mutations中
+    this.$store.commit('todoActions/CHECKALL', e.target.checked)
+}
+```
+
+multations中的回调：
+
+```js
+CHECKALL(state, checkAll) {
+    // 遍历所有的数据 并把当前的状态值赋值给每一个todo对象
+    state.todoList.forEach(todo => todo.done = checkAll);
+}
+```
+
+
+
+### 清除所有已完成任务
+
+点击清除已完成的任务，将任务栏中打钩的任务全部清除
+
+```js
+clearDone() {
+    this.$store.commit('todoActions/CLEARDONE')
+}
+```
+
+```js
+CLEARDONE(state) {
+    if (state.todoList.every(todo => !todo.done)) return alert('当前列表中没有已完成的项目!')
+    state.todoList = state.todoList.filter(todo => !todo.done)
+}
+```
+
+## 计算总数和已经完成的数任务
+
+```js
+ getters: {
+    // 计算总数
+    todoTotal(state) {
+      return state.todoList.length
+    },
+    // 计算已经完成的任务
+    doneTotal(state) {
+      return state.todoList.filter(todo => todo.done).length
+    }
+  }
+```
+
+在getters中计算的数据，在Footer组件中进行展示：
+
+```js
+ computed: {
+    // 获取getters中的值 模块化之后的获取
+    // 获取getters中计算出来的总数
+    total() {
+      return this.$store.getters['todoActions/todoTotal']
+    },
+    // 获取getters中计算出来的已完成数
+    doneTotal() {
+      return this.$store.getters['todoActions/doneTotal']
+    },
+    // 计算已完成的总数和总数是否相同，如果相同，则返回true 否则返回false
+    isAll() {
+      return this.total === this.doneTotal && this.total > 0
+    }
+  }
+```
+
+## 本地数据的缓存
+
+```js
+ state: {
+    // 存放数据的地方
+    todoList: JSON.parse(localStorage.getItem('todoList')) || []
+  }
+```
+
+先读取本地存储中（注意数据类型的转换）是否存在数据，如果没有数据，则赋值空数组。
+
+```js
+ watch: {
+    todoList: {
+      deep: true,
+      handler(value) {
+        // 当新增或者删除一个数据时，把这个最新的数据读取或者从本地存储中删除
+        localStorage.setItem('todoList', JSON.stringify(value))
+      }
+    }
+  }
+```
+
+在App组件，监视数据的变化，这里需要开启深度监听，因此要使用完整写法。
+
+## 动画引入
+
+定义样式和动画：(样式可以根据自己的需求自己定义)
+
+```css
+.todo-enter-active {
+  animation: slide 0.5s linear;
+}
+
+.todo-leave-active {
+  animation: slide 0.5s linear reverse;
+}
+
+@keyframes slide {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0px);
+  }
+}
+```
+
+在组件Item上使用动画：
+
+```html
+ <transition
+    name="todo"
+    appear
+  >
+  ...
+  </transition>
+```
+
 
 
